@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>미니 브릿지 테이블</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Libre+Caslon+Text:wght@700&display=swap">
+<style>
+/* One baize card table: you are always at the bottom, partner across, opponents at the sides. */
+:root{
+  --felt:#21473a; --felt-2:#2a5848; --felt-deep:#17362b;
+  --rail:#4a3424; --brass:#d2ad62; --brass-soft:#d2ad6233;
+  --ivory:#fbf7ee; --ink:#1c1e22; --suit-red:#b8261d;
+  --text:#ebf1ea; --muted:#a8c1b3; --good:#8fd19e; --bad:#f19b8c;
+  --f-display:"Gowun Batang","Noto Serif KR",serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-rank:"Libre Caslon Text",Georgia,"Times New Roman",serif;
+  --cw:clamp(38px,6.6vw,60px); --ch:calc(var(--cw)*1.42); --ov:calc(var(--cw)*-0.44);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--felt-deep);margin:0}
+body{color:var(--text);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(16px,env(safe-area-inset-top,0px)) max(28px,env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.6rem;margin:0;color:var(--ivory)}
+h2{font-family:var(--f-display);font-weight:700;font-size:1.25rem;margin:0;color:var(--ivory)}
+.score{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-variant-numeric:tabular-nums}
+.chip{border:1px solid var(--brass-soft);border-radius:999px;padding:3px 11px;font-size:.82rem;color:var(--muted);background:#0000001f}
+.chip b{color:var(--ivory);font-weight:600}
+.chip.contract{border-color:var(--brass);color:var(--brass)}.chip.contract b{color:var(--brass)}
+.btn{font:inherit;font-weight:600;border-radius:9px;padding:9px 16px;cursor:pointer;background:var(--brass);color:var(--felt-deep);border:1px solid var(--brass)}
+.btn.ghost{background:transparent;color:var(--text);border-color:#ffffff33;font-weight:500}
+.btn.small{padding:4px 10px;font-size:.82rem}
+.btn.ghost[aria-pressed="true"]{background:var(--ivory);color:var(--ink);border-color:var(--ivory)}
+.btn.ghost .red{color:#ff8a7d}.btn.ghost[aria-pressed="true"] .red{color:var(--suit-red)}
+.btn:focus-visible,input:focus-visible{outline:2px solid var(--ivory);outline-offset:2px}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.panel{background:#0000002a;border:1px solid #ffffff14;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.label{font-size:.75rem;letter-spacing:.08em;color:var(--muted)}
+.facts{font-size:.88rem;color:var(--muted);font-variant-numeric:tabular-nums}.facts b{color:var(--ivory);font-weight:600}
+.err{color:var(--bad);font-size:.9rem;min-height:1.3em}
+input[type=text]{font:inherit;background:#00000033;color:var(--ivory);border:1px solid #ffffff33;border-radius:9px;padding:9px 12px;min-width:0}
+input.code{text-transform:uppercase;letter-spacing:.2em;width:8.5em;font-variant-numeric:tabular-nums}
+
+/* home */
+.home{max-width:460px;margin:6vh auto 0;display:flex;flex-direction:column;gap:16px}
+.home .lede{color:var(--muted);margin:0}
+.home .field{display:flex;flex-direction:column;gap:6px}
+.home .field input{width:100%}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
+.or::before,.or::after{content:"";flex:1;border-top:1px solid #ffffff1f}
+
+/* lobby */
+.bigcode{font-family:var(--f-rank);font-size:2.2rem;letter-spacing:.25em;color:var(--brass)}
+.compass{display:grid;gap:8px;grid-template-columns:1fr 1fr 1fr;grid-template-areas:". n ." "w . e" ". s ."}
+.compass .st{border:1px solid #ffffff22;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.compass .st.me{border-color:var(--brass);background:var(--brass-soft)}
+.compass .dir{font-family:var(--f-display);font-weight:700;color:var(--ivory)}
+.compass .who{font-size:.85rem;color:var(--muted);word-break:break-all}
+.compass .who.h{color:var(--ivory)}
+.share{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.share code{background:#0003;border-radius:6px;padding:4px 8px;font-size:.82rem;word-break:break-all;user-select:all}
+
+/* table */
+.table{position:relative;border-radius:22px;padding:14px 10px;
+  background:radial-gradient(ellipse at 50% 45%,var(--felt-2),var(--felt) 70%);
+  box-shadow:0 0 0 7px var(--rail),0 0 0 8px #00000066,0 18px 40px #0008,inset 0 0 60px #0004;
+  display:grid;gap:10px;grid-template-columns:minmax(66px,1fr) minmax(0,2.4fr) minmax(66px,1fr);
+  grid-template-areas:"n n n" "w c e" "s s s"}
+.seat{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.seat.n{grid-area:n}.seat.s{grid-area:s}.seat.w{grid-area:w;justify-content:center}.seat.e{grid-area:e;justify-content:center}
+.tag{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 6px;font-size:.8rem;color:var(--muted);text-align:center}
+.tag .nm{font-family:var(--f-display);font-weight:700;font-size:.98rem;color:var(--ivory)}
+.tag .pl{color:var(--text);max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag .off{color:var(--bad)}
+.tag .pts{color:var(--brass);font-variant-numeric:tabular-nums;font-weight:600}
+.tag .role{font-size:.7rem;letter-spacing:.06em;padding:1px 7px;border-radius:4px;background:var(--brass);color:var(--felt-deep);font-weight:600}
+.tag .role.dummy{background:transparent;color:var(--brass);border:1px solid var(--brass)}
+.tag .turn{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px #8fd19e33}
+.fan{display:flex;justify-content:center;padding-top:10px;max-width:100%}
+.card{position:relative;flex:none;width:var(--cw);height:var(--ch);border-radius:6px;background:var(--ivory);color:var(--ink);
+  border:1px solid #0000002a;box-shadow:0 2px 4px #0005;padding:0;font:inherit;text-align:left;transition:transform .15s ease,filter .15s ease,box-shadow .15s ease}
+.fan .card+.card{margin-left:var(--ov)}.fan .card.gap{margin-left:calc(var(--ov) + 7px)}
+.card.red{color:var(--suit-red)}
+.card .ix{position:absolute;top:3px;left:4px;display:flex;flex-direction:column;align-items:center;line-height:1}
+.card .ix b{font-family:var(--f-rank);font-size:calc(var(--cw)*.3);letter-spacing:-.04em}
+.card .ix i{font-style:normal;font-size:calc(var(--cw)*.27);margin-top:1px}
+.card .pip{position:absolute;right:5px;bottom:3px;font-size:calc(var(--cw)*.5);line-height:1;opacity:.9}
+button.card{cursor:default}button.card.play{cursor:pointer}
+button.card.play:hover,button.card.play:focus-visible{transform:translateY(-10px);box-shadow:0 8px 14px #0007;z-index:2}
+button.card:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.card.dim{filter:brightness(.55) saturate(.6)}
+.card.win{box-shadow:0 0 0 3px var(--brass),0 6px 16px #0008}
+.back{width:calc(var(--cw)*.9);height:calc(var(--ch)*.9);border-radius:6px;background:repeating-linear-gradient(45deg,#7a2a2a 0 4px,#8e3434 4px 8px);
+  border:3px solid var(--ivory);box-shadow:3px 3px 0 -1px var(--ivory),3px 3px 0 0 #0005,0 2px 5px #0006;
+  display:grid;place-items:center;color:var(--ivory);font-weight:600;font-size:.85rem;font-variant-numeric:tabular-nums}
+.back span{background:#0007;border-radius:4px;padding:0 5px}
+.center{grid-area:c;position:relative;min-height:calc(var(--ch)*2.75);border-radius:50%;border:1px dashed #ffffff22}
+.slot{position:absolute;transform:translate(-50%,-50%)}
+.slot.n{left:50%;top:24%}.slot.s{left:50%;top:76%}.slot.e{left:76%;top:50%}.slot.w{left:24%;top:50%}
+.slot .card{animation:land .25s ease-out}
+@keyframes land{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
+.center .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:.8rem;pointer-events:none;padding:0 18%}
+.center .mid b{display:block;font-family:var(--f-display);color:var(--brass);font-size:1.3rem;line-height:1.2}
+.status{font-size:1.02rem;color:var(--ivory);min-height:1.5em}
+.status small{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.goal{font-family:var(--f-display);font-size:1.15rem;color:var(--brass)}
+.last{font-size:.84rem;color:var(--muted);border-top:1px solid #ffffff14;padding-top:8px}
+.result{font-family:var(--f-display);font-size:1.35rem}.result.ok{color:var(--good)}.result.no{color:var(--bad)}
+table.calc{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums}
+table.calc td{padding:3px 14px 3px 0;color:var(--muted)}table.calc td:last-child{text-align:right;color:var(--ivory)}
+table.calc tr.sum td{border-top:1px solid #ffffff22;color:var(--ivory);font-weight:600}
+.legal-hint{color:var(--brass)}
+details{font-size:.88rem;color:var(--muted)}details summary{cursor:pointer;color:var(--text)}
+details ul{margin:8px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:3px}
+.conn{font-size:.8rem;color:var(--bad)}
+@media (max-width:520px){.table{padding:12px 6px;grid-template-columns:minmax(60px,1fr) minmax(0,1.6fr) minmax(60px,1fr)}h1{font-size:1.35rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>미니 브릿지</h1>
+    <div class="score" id="score"></div>
+  </header>
+  <div class="conn" id="conn" hidden>서버와 연결이 끊겼어요. 다시 연결하는 중…</div>
+  <main id="app"></main>
+  <details>
+    <summary>규칙 한눈에 보기</summary>
+    <ul>
+      <li>A=4, K=3, Q=2, J=1점. 점수 합이 큰 팀이 공격하고, 그 팀에서 점수 높은 사람이 디클레어러예요.</li>
+      <li>디클레어러의 파트너는 더미가 됩니다. 더미 카드는 아무에게도 공개되지 않고 AI가 대신 냅니다.</li>
+      <li>디클레어러 왼쪽 사람이 첫 카드를 냅니다. 같은 무늬가 있으면 반드시 따라 내야 해요.</li>
+      <li>같은 무늬에서 가장 높은 카드가 이기고, 트럼프는 다른 무늬를 모두 이깁니다.</li>
+      <li>목표: 부분 계약 7트릭, 게임은 노트럼프 9 · 스페이드/하트 10 · 다이아/클럽 11트릭.</li>
+      <li>점수: 6트릭 초과분 1트릭당 마이너 20, 메이저 30, NT 첫 40·이후 30. 부분 성공 +50, 게임 성공 +300. 실패하면 모자란 트릭당 상대 +50.</li>
+      <li>빈 자리와 접속이 끊긴 사람의 자리는 AI가 대신 둡니다. 같은 기기로 다시 들어오면 자리로 돌아와요.</li>
+    </ul>
+  </details>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const SUITS=['♠','♥','♦','♣'], SUIT_NAMES=['스페이드','하트','다이아몬드','클럽'];
+const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SEATS=['북','동','남','서'];
+const DISPLAY_ORDER=[0,1,3,2];
+const suitOf=c=>Math.floor(c/13), rankOf=c=>c%13, isRed=s=>s===1||s===2, team=p=>p%2;
+const cardName=c=>SUITS[suitOf(c)]+RANKS[rankOf(c)];
+const trumpLabel=t=>t===4?'NT':SUITS[t];
+const needFor=(t,g)=>g==='part'?7:(t===4?9:t<2?10:11);
+const contractText=(t,g)=>`${needFor(t,g)-6}${trumpLabel(t)}`;
+const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+let pid=lsGet('mb-pid'); if(!pid){pid=Math.random().toString(36).slice(2)+Date.now().toString(36); lsSet('mb-pid',pid);}
+
+const socket=io();
+let ST=null, pick=null, homeError='', joining=false;
+const urlCode=new URLSearchParams(location.search).get('room');
+
+function enterRoom(kind, code){
+  const name=(document.getElementById('name')?.value||lsGet('mb-name')||'').trim();
+  if(!name){homeError='이름을 입력해 주세요.'; render(); return;}
+  lsSet('mb-name',name); joining=true; homeError='';
+  const done=res=>{ joining=false;
+    if(res?.error){homeError=res.error; lsSet('mb-room',null); ST=null; render(); return;}
+    lsSet('mb-room',res.code); history.replaceState(null,'',`/?room=${res.code}`); };
+  if(kind==='create') socket.emit('create',{name,pid},done);
+  else socket.emit('join',{code,name,pid},done);
+  render();
+}
+
+socket.on('connect',()=>{
+  document.getElementById('conn').hidden=true;
+  const code=lsGet('mb-room'), name=lsGet('mb-name');
+  if(code && name && (!urlCode || urlCode.toUpperCase()===code)) {
+    socket.emit('join',{code,name,pid},res=>{ if(res?.error){lsSet('mb-room',null); ST=null; render();} });
+  }
+});
+socket.on('disconnect',()=>{document.getElementById('conn').hidden=false;});
+socket.on('state',s=>{
+  ST=s;
+  if(s.phase==='choose' && s.game?.rec && !pick) pick={...s.game.rec};
+  if(s.phase!=='choose') pick=null;
+  render();
+});
+
+/* ---------- helpers ---------- */
+// Position on screen relative to me: bottom = me, left = next clockwise, top = partner, right = previous.
+const posOf=p=>['s','w','n','e'][(p-ST.my+4)%4];
+const seatName=p=>{const s=ST.seats[p]; return s.human?s.name:'AI';};
+const sortHand=h=>h.slice().sort((a,b)=>{const d=DISPLAY_ORDER.indexOf(suitOf(a))-DISPLAY_ORDER.indexOf(suitOf(b));return d||rankOf(b)-rankOf(a);});
+const teamName=t=>t===0?'남북':'동서';
+const ourTeam=()=>team(ST.my);
+const who=p=>p===ST.my?'당신':`${SEATS[p]}(${esc(seatName(p))})`;
+
+function cardHTML(c,{tag='div',cls='',disabled=false}={}){
+  const s=suitOf(c);
+  const attrs=tag==='button'?` type="button" data-c="${c}"${disabled?' disabled':''} aria-label="${SUIT_NAMES[s]} ${RANKS[rankOf(c)]}"`:'';
+  return `<${tag} class="card${isRed(s)?' red':''}${cls}"${attrs}><span class="ix"><b>${RANKS[rankOf(c)]}</b><i>${SUITS[s]}</i></span><span class="pip">${SUITS[s]}</span></${tag}>`;
+}
+
+/* ---------- screens ---------- */
+function homeHTML(){
+  const name=esc(lsGet('mb-name')||'');
+  return `<div class="home panel">
+    <h2>함께 하는 미니 브릿지</h2>
+    <p class="lede">방을 만들고 친구에게 코드나 링크를 보내 주세요. 빈 자리는 AI가 채웁니다.</p>
+    <div class="field"><label class="label" for="name">내 이름</label><input type="text" id="name" maxlength="12" value="${name}" placeholder="예: 장호" autocomplete="nickname"></div>
+    <button class="btn" data-act="create"${joining?' disabled':''}>새 방 만들기</button>
+    <div class="or">또는 친구 방에 참여</div>
+    <div class="row"><input type="text" class="code" id="code" maxlength="4" value="${esc(urlCode||'')}" placeholder="코드" aria-label="방 코드"><button class="btn ghost" data-act="join"${joining?' disabled':''}>참여하기</button></div>
+    <div class="err">${esc(homeError)}</div>
+  </div>`;
+}
+
+function lobbyHTML(){
+  const link=`${location.origin}/?room=${ST.code}`;
+  const humans=ST.seats.filter(s=>s.human).length;
+  const st=p=>{const s=ST.seats[p], mine=p===ST.my;
+    return `<div class="st${mine?' me':''}" style="grid-area:${['n','e','s','w'][p]}">
+      <span class="dir">${SEATS[p]}</span>
+      <span class="who${s.human?' h':''}">${s.human?esc(s.name)+(mine?' (나)':''):'AI'}</span>
+      ${!s.human?`<button class="btn ghost small" data-act="sit" data-seat="${p}">여기 앉기</button>`:''}
+    </div>`;};
+  return `<div class="panel">
+    <div class="row" style="justify-content:space-between"><div><div class="label">방 코드</div><div class="bigcode">${ST.code}</div></div>
+      <button class="btn ghost small" data-act="leave">방 나가기</button></div>
+    <div class="share"><code id="link">${esc(link)}</code><button class="btn ghost small" data-act="copy">링크 복사</button><span class="facts" id="copied"></span></div>
+    <div class="facts">북과 남, 동과 서가 한 팀이에요. 원하는 자리를 고르세요.</div>
+    <div class="compass">${[0,1,2,3].map(st).join('')}</div>
+    <div class="row">${ST.isHost?`<button class="btn" data-act="start">게임 시작 (사람 ${humans}명 + AI ${4-humans}명)</button>`:'<span class="facts">방장이 게임을 시작하길 기다리는 중…</span>'}</div>
+  </div>`;
+}
+
+function seatHTML(p){
+  const g=ST.game, pos=posOf(p), s=ST.seats[p];
+  let role='';
+  if(g.declarer===p) role='<span class="role">디클레어러</span>';
+  if(g.dummy===p) role='<span class="role dummy">더미</span>';
+  const turnDot=ST.phase==='play' && g.pendingWinner===null && g.turn===p ? '<span class="turn" title="차례"></span>':'';
+  const pts=g.hcp[p]!=null?`<span class="pts">${g.hcp[p]}점</span>`:'';
+  const pl=p===ST.my?'나':(s.human?esc(s.name):'AI');
+  const off=s.human && !s.connected?'<span class="off">(접속 끊김·AI 대행)</span>':'';
+  const tag=`<div class="tag">${turnDot}<span class="nm">${SEATS[p]}</span><span class="pl">${pl}</span>${g.dealer===p?'<span title="딜러">D</span>':''}${pts}${role}${off}</div>`;
+  let body;
+  if(p===ST.my){
+    const legal=new Set(g.legal); let prev=null;
+    body=`<div class="fan">${sortHand(g.hand).map(c=>{
+      let cls=''; if(prev!==null && suitOf(c)!==prev) cls+=' gap'; prev=suitOf(c);
+      if(g.legal.length) cls+=legal.has(c)?' play':' dim';
+      return cardHTML(c,{tag:'button',cls,disabled:!legal.has(c)});
+    }).join('')}</div>`;
+  } else body=`<div class="back"><span>${g.counts[p]}</span></div>`;
+  return `<div class="seat ${pos}">${pos==='s'?body+tag:tag+body}</div>`;
+}
+
+function centerHTML(){
+  const g=ST.game;
+  const slots=g.trick.map(({p,c})=>`<div class="slot ${posOf(p)}">${cardHTML(c,{cls:g.pendingWinner===p?' win':''})}</div>`).join('');
+  let mid='';
+  const tr=()=>{const us=ourTeam(); return `<span><b>${g.tricks[us]} : ${g.tricks[1-us]}</b>우리 : 상대 트릭</span>`;};
+  if(ST.phase==='announce') mid='<div class="mid">점수 발표 중</div>';
+  else if(ST.phase==='redeal') mid='<div class="mid">다시 나누는 중</div>';
+  else if(ST.phase==='choose') mid='<div class="mid">계약 정하는 중</div>';
+  else if(ST.phase==='contract') mid=`<div class="mid"><span><b>${contractText(g.trump,g.goal)}</b>계약</span></div>`;
+  else if((ST.phase==='play' && !g.trick.length) || ST.phase==='done') mid=`<div class="mid">${tr()}</div>`;
+  return `<div class="center">${mid}${slots}</div>`;
+}
+
+function lastTrickHTML(){
+  const l=ST.game.lastTrick; if(!l) return '';
+  return `<div class="last">직전 트릭: ${l.cards.map(x=>`${SEATS[x.p]} ${cardName(x.c)}`).join(' · ')} → <b>${SEATS[l.winner]} 승</b></div>`;
+}
+
+function panelHTML(){
+  const g=ST.game;
+  switch(ST.phase){
+    case 'announce': return `<div class="status">딜러(${SEATS[g.dealer]})부터 시계 방향으로 점수를 발표합니다…<small>A=4, K=3, Q=2, J=1점</small></div>`;
+    case 'redeal': return `<div class="status">남북 20점, 동서 20점 동점이에요.<small>공격 팀을 정할 수 없어서 곧 다시 나눕니다.</small></div>`;
+    case 'choose': {
+      if(g.declarer!==ST.my) return `<div class="status">${who(g.declarer)}가 디클레어러예요. 계약을 고르는 중…</div>`;
+      const partner=(ST.my+2)%4, hcp=g.hcp[ST.my]+g.hcp[partner], pk=pick||{trump:4,goal:'part'};
+      const tb=[0,1,2,3,4].map(t=>`<button class="btn ghost" data-act="trump" data-v="${t}" aria-pressed="${pk.trump===t}">${t===4?'노트럼프':`<span class="${isRed(t)?'red':''}">${SUITS[t]}</span> ${SUIT_NAMES[t]}`}</button>`).join('');
+      const gb=[['part','부분 계약 (7트릭)'],['game',`게임 (${needFor(pk.trump,'game')}트릭)`]].map(([v,l])=>`<button class="btn ghost" data-act="goal" data-v="${v}" aria-pressed="${pk.goal===v}">${l}</button>`).join('');
+      return `<div class="status">당신이 디클레어러예요!<small>내 카드와 파트너의 점수만 보고 트럼프와 목표를 고르세요. 파트너(더미) 카드는 AI가 냅니다.</small></div>
+        <div class="facts">우리 팀 합계 <b>${hcp}점</b> (나 ${g.hcp[ST.my]} + ${SEATS[partner]} ${g.hcp[partner]})</div>
+        <div class="label">트럼프</div><div class="row">${tb}</div>
+        <div class="label">목표</div><div class="row">${gb}</div>
+        <div class="facts">팁: 내 카드에서 가장 많은 무늬를 트럼프로, 합계 25점 이상이면 게임에 도전해 보세요.</div>
+        <div class="row"><span class="goal">${contractText(pk.trump,pk.goal)} · 13트릭 중 ${needFor(pk.trump,pk.goal)}트릭</span><button class="btn" data-act="contract">이 계약으로 시작</button></div>`;
+    }
+    case 'contract': {
+      const note = g.dummy===ST.my ? '당신은 더미예요. 당신 카드는 AI가 대신 냅니다. 편하게 지켜보세요.'
+        : team(g.declarer)===ourTeam() ? '우리 팀이 공격이에요. 목표 트릭을 채워 봐요.'
+        : `당신은 수비팀이에요. ${SEATS[g.declarer]}가 목표를 못 채우도록 트릭을 가져오세요.`;
+      return `<div class="status">${who(g.declarer)}가 디클레어러, ${who(g.dummy)}가 더미예요. 곧 시작합니다.<small>${note}</small></div>
+        <div class="row"><span class="goal">계약 ${contractText(g.trump,g.goal)} · ${g.target}트릭 목표</span></div>`;
+    }
+    case 'play': {
+      let st;
+      if(g.pendingWinner!==null) st=`<b>${who(g.pendingWinner)}</b>가 이번 트릭을 가져갑니다.`;
+      else if(g.legal.length){
+        let hint;
+        if(!g.trick.length) hint='먼저 내는 차례예요. 아무 카드나 낼 수 있어요.';
+        else { const led=suitOf(g.trick[0].c), has=g.hand.some(c=>suitOf(c)===led);
+          hint=has?`<span class="legal-hint">${SUITS[led]} ${SUIT_NAMES[led]}</span>가 있으니 ${SUITS[led]}를 내야 해요.`
+            :`${SUITS[led]}가 없어서 아무 카드나 낼 수 있어요.${g.trump<4?` 트럼프 ${SUITS[g.trump]}를 내면 자를 수 있어요.`:''}`; }
+        st=`당신 차례 — 카드를 누르세요.<small>${hint}</small>`;
+      } else if(g.turn===ST.my && g.dummy===ST.my) st='당신(더미)의 카드를 AI가 내는 중…';
+      else st=`${who(g.turn)} 차례…`;
+      const dt=team(g.declarer);
+      return `<div class="status">${st}</div>
+        <div class="facts">트릭 남북 <b>${g.tricks[0]}</b> · 동서 <b>${g.tricks[1]}</b> — ${teamName(dt)}이 ${g.target}트릭 필요 (계약 ${contractText(g.trump,g.goal)}, 트럼프 ${g.trump===4?'없음':SUITS[g.trump]})</div>${lastTrickHTML()}`;
+    }
+    case 'done': {
+      const r=g.result, side=teamName(r.dt), other=teamName(1-r.dt);
+      const usWin=(r.made && r.dt===ourTeam()) || (!r.made && r.dt!==ourTeam());
+      const calc=r.made
+        ? `<tr><td>트릭 점수 (6 초과 ${r.won-6}트릭)</td><td>${r.trickPts}</td></tr><tr><td>${r.goal==='game'?'게임':'부분 계약'} 성공 보너스</td><td>${r.bonus}</td></tr><tr class="sum"><td>${side} 획득</td><td>+${r.points}</td></tr>`
+        : `<tr><td>모자란 트릭 ${r.down} × 50</td><td>${r.points}</td></tr><tr class="sum"><td>${other} 획득</td><td>+${r.points}</td></tr>`;
+      return `<div class="result ${usWin?'ok':'no'}">${r.made?`계약 성공 — ${side} ${r.won}트릭`:`계약 실패 — ${side} ${r.won}트릭 (목표 ${r.need})`}</div>
+        <div class="facts">${usWin?`우리 팀(${teamName(ourTeam())})이 이번 판을 가져왔어요.`:`이번 판은 ${teamName(1-ourTeam())}이 가져갔어요.`}</div>
+        <table class="calc">${calc}</table>${lastTrickHTML()}
+        <div class="row"><button class="btn" data-act="next">다음 판</button>${ST.isHost?'<button class="btn ghost" data-act="lobby">대기실로 (점수 초기화)</button>':''}</div>`;
+    }
+  }
+  return '';
+}
+
+function scoreHTML(){
+  if(!ST) return '';
+  let h=`<span class="chip">방 <b>${ST.code}</b></span>`;
+  if(ST.game){
+    h+=`<span class="chip">${ST.game.handNo}번째 판</span><span class="chip">누적 남북 <b>${ST.total[0]}</b> · 동서 <b>${ST.total[1]}</b></span>`;
+    if(['contract','play','done'].includes(ST.phase)) h+=`<span class="chip contract">계약 <b>${contractText(ST.game.trump,ST.game.goal)}</b> · ${SEATS[ST.game.declarer]} 디클레어러</span>`;
+    h+=`<button class="btn ghost small" data-act="leave">나가기</button>`;
+  }
+  return h;
+}
+
+function render(){
+  document.getElementById('score').innerHTML=scoreHTML();
+  const app=document.getElementById('app');
+  if(!ST || ST.my<0){ if(!document.getElementById('name')) app.innerHTML=homeHTML(); else { app.querySelector('.err').textContent=homeError; app.querySelectorAll('[data-act]').forEach(b=>b.disabled=joining); } return; }
+  if(ST.phase==='lobby'){ app.innerHTML=lobbyHTML(); return; }
+  app.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px"><div class="table">${[0,1,2,3].map(seatHTML).join('')}${centerHTML()}</div><div class="panel">${panelHTML()}</div></div>`;
+}
+
+document.addEventListener('click',e=>{
+  const card=e.target.closest('button.card.play');
+  if(card){ socket.emit('play',{card:+card.dataset.c}); return; }
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act;
+  if(a==='create') enterRoom('create');
+  else if(a==='join'){ const code=(document.getElementById('code').value||'').trim().toUpperCase(); if(code.length!==4){homeError='4자리 방 코드를 입력해 주세요.'; render(); return;} enterRoom('join',code); }
+  else if(a==='sit') socket.emit('sit',{seat:+b.dataset.seat});
+  else if(a==='start') socket.emit('start');
+  else if(a==='trump'){ pick.trump=+b.dataset.v; render(); }
+  else if(a==='goal'){ pick.goal=b.dataset.v; render(); }
+  else if(a==='contract') socket.emit('contract',pick);
+  else if(a==='next') socket.emit('next');
+  else if(a==='lobby') socket.emit('lobby');
+  else if(a==='leave'){ socket.emit('leave'); lsSet('mb-room',null); ST=null; history.replaceState(null,'','/'); document.getElementById('app').innerHTML=''; render(); }
+  else if(a==='copy'){
+    const link=document.getElementById('link').textContent, out=document.getElementById('copied');
+    navigator.clipboard?.writeText(link).then(()=>{out.textContent='복사했어요';},()=>{ getSelection().selectAllChildren(document.getElementById('link')); out.textContent='선택했어요. 복사해서 보내세요'; });
+  }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Enter' && e.target.id==='code') document.querySelector('[data-act="join"]')?.click(); });
+
+render();
+</script>
+</body>
+</html>

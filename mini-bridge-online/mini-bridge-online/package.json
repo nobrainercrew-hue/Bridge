@@ -1,0 +1,20 @@
+{
+  "name": "mini-bridge-online",
+  "version": "1.0.0",
+  "description": "친구와 함께하는 온라인 미니 브릿지 (빈 자리는 AI)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/play-through.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
